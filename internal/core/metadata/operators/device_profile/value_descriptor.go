@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"github.com/edgexfoundry/go-mod-core-contracts/clients/logger"
+	"github.com/edgexfoundry/go-mod-core-contracts/clients/types"
 	contract "github.com/edgexfoundry/go-mod-core-contracts/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/models/http"
 
 	"github.com/edgexfoundry/edgex-go/internal/core/data/errors"
-	errors2 "github.com/edgexfoundry/edgex-go/internal/core/metadata/errors"
 )
 
 // ValueDescriptorAdder provides the necessary functionality for creating a ValueDescriptor.
@@ -74,21 +75,29 @@ type updateValueDescriptor struct {
 
 // UpdateValueDescriptorExecutor updates a value descriptor.
 type UpdateValueDescriptorExecutor interface {
-	Execute() error
+	Execute() contract.EdgexError
 }
 
 // Execute updates a value descriptor with the provided information.
-func (u updateValueDescriptor) Execute() error {
+func (u updateValueDescriptor) Execute() contract.EdgexError {
 	// Get pre-existing device profile so we can determine what to do with the device resources provided in the update.
 	// For example, update/create/delete.
 	persistedDeviceProfile, err := u.loader.GetDeviceProfileByName(u.dp.Name)
 	if err != nil {
-		return err
+		return contract.NewCommonEdgexError(
+			[]string{"updateValueDescriptor.Execute", "loader.GetDeviceProfileByName"},
+			contract.KindDatabaseError,
+			err.Error(),
+		)
 	}
 
 	devices, err := u.loader.GetDevicesByProfileId(persistedDeviceProfile.Id)
 	if err != nil {
-		return err
+		return contract.NewCommonEdgexError(
+			[]string{"updateValueDescriptor.Execute", "loader.GetDevicesByProfileId"},
+			contract.KindDatabaseError,
+			err.Error(),
+		)
 	}
 
 	// Verify the associated DeviceProfile is in an upgradeable state, which means that no devices are associated with
@@ -99,10 +108,11 @@ func (u updateValueDescriptor) Execute() error {
 			associatedDeviceNames = append(associatedDeviceNames, d.Name)
 		}
 
-		return errors2.NewErrDeviceProfileInvalidState(
-			persistedDeviceProfile.Id,
-			persistedDeviceProfile.Name,
-			fmt.Sprintf("The DeviceProfile is in use by Device(s):[%s]", strings.Join(associatedDeviceNames, ",")))
+		return contract.NewCommonEdgexError(
+			[]string{"updateValueDescriptor.Execute"},
+			contract.KindEntityStateError,
+			fmt.Sprintf("The DeviceProfile is in use by Device(s):[%s]", strings.Join(associatedDeviceNames, ",")),
+		)
 	}
 
 	// Get names of all the device resources so we can check the valueDescriptorUsage with one call to Core-Data.
@@ -114,8 +124,17 @@ func (u updateValueDescriptor) Execute() error {
 	// Check if any of the ValueDescriptors associated with the DeviceResources are in use.
 	// If so return an error stating all the ValueDescriptors which are in use.
 	valueDescriptorUsage, err := u.client.ValueDescriptorsUsage(persistedDeviceResourceNames, u.ctx)
-	if err != nil {
-		return err
+
+	// TODO(Anthony) this is here only to simulate how the system would behave if our clients returned EdgeX errors in the body of the response.
+	//  This would allow us to programmatically inspect and operate on errors.
+	var edgexError contract.EdgexError
+	if err != nil{
+		edgexError = http.FromServiceClientError(err.(*types.ErrServiceClient))
+	}
+
+	if edgexError != nil {
+		edgexError.AddOps("updateValueDescriptor.Execute","client.ValueDescriptorsUsage")
+		return edgexError
 	}
 
 	var inUseValueDescriptors []string
@@ -126,7 +145,11 @@ func (u updateValueDescriptor) Execute() error {
 	}
 
 	if len(inUseValueDescriptors) > 0 {
-		return errors.NewErrValueDescriptorsInUse(inUseValueDescriptors)
+		return contract.NewCommonEdgexError(
+			[]string{"updateValueDescriptor.Execute"},
+			contract.KindEntityStateError,
+			errors.NewErrValueDescriptorsInUse(inUseValueDescriptors).Error(),
+		)
 	}
 
 	// Based on the DeviceProfile as it is before the update, determine which operation needs to be applied to each
@@ -137,28 +160,43 @@ func (u updateValueDescriptor) Execute() error {
 	for _, d := range deleted {
 		err = u.client.DeleteByName(d.Name, u.ctx)
 		if err != nil {
-			return err
+			return contract.NewCommonEdgexError(
+				[]string{"updateValueDescriptor.Execute", "client.DeleteByName"},
+				contract.KindCommunicationError,
+				err.Error(),
+			)
 		}
-
 	}
 
 	for _, up := range update {
 		v, err := u.client.ValueDescriptorForName(up.Name, u.ctx)
 		if err != nil {
-			return err
+			return contract.NewCommonEdgexError(
+				[]string{"updateValueDescriptor.Execute", "client.ValueDescriptorForName"},
+				contract.KindCommunicationError,
+				err.Error(),
+			)
 		}
 
 		up.Id = v.Id
 		err = u.client.Update(&up, u.ctx)
 		if err != nil {
-			return err
+			return contract.NewCommonEdgexError(
+				[]string{"updateValueDescriptor.Execute", "client.Update"},
+				contract.KindCommunicationError,
+				err.Error(),
+			)
 		}
 	}
 
 	for _, c := range create {
 		_, err = u.client.Add(&c, u.ctx)
 		if err != nil {
-			return err
+			return contract.NewCommonEdgexError(
+				[]string{"updateValueDescriptor.Execute", "client.Add"},
+				contract.KindCommunicationError,
+				err.Error(),
+			)
 		}
 	}
 

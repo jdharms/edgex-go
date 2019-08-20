@@ -26,7 +26,7 @@ import (
 
 // GetReadingsExecutor retrieves one or more readings.
 type GetReadingsExecutor interface {
-	Execute() ([]contract.Reading, error)
+	Execute() ([]contract.Reading, contract.EdgexError)
 }
 
 // getReadingsByValueDescriptorName encapsulates the data needed to obtain readings by a value descriptor name.
@@ -39,15 +39,15 @@ type getReadingsByValueDescriptorName struct {
 }
 
 // Execute retrieves readings by value descriptor name.
-func (g getReadingsByValueDescriptorName) Execute() ([]contract.Reading, error) {
+func (g getReadingsByValueDescriptorName) Execute() ([]contract.Reading, contract.EdgexError) {
 	r, err := g.loader.ReadingsByValueDescriptor(g.name, g.limit)
 
 	if err != nil {
-		return nil, err
+		return nil, contract.NewCommonEdgexError([]string{"getReadingsByValueDescriptorName.Execute", "loader.ReadingsByValueDescriptor"}, contract.KindDatabaseError, err.Error())
 	}
 
 	if len(r) > g.config.MaxResultCount {
-		return nil, errors.NewErrLimitExceeded(len(r))
+		return nil, contract.NewCommonEdgexError([]string{"getReadingsByValueDescriptorName.Execute"}, contract.KindLimitExceeded, errors.NewErrLimitExceeded(len(r)).Error())
 	}
 
 	return r, nil

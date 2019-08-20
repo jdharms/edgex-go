@@ -26,7 +26,7 @@ import (
 
 // GetValueDescriptorsExecutor retrieves one or more value descriptors.
 type GetValueDescriptorsExecutor interface {
-	Execute() ([]contract.ValueDescriptor, error)
+	Execute() ([]contract.ValueDescriptor, contract.EdgexError)
 }
 
 // getValueDescriptorsByNames encapsulates data needed to retrieve value descriptors by one or more names.
@@ -38,14 +38,14 @@ type getValueDescriptorsByNames struct {
 }
 
 // Execute retrieves value descriptors by one or more names.
-func (g getValueDescriptorsByNames) Execute() ([]contract.ValueDescriptor, error) {
+func (g getValueDescriptorsByNames) Execute() ([]contract.ValueDescriptor, contract.EdgexError) {
 	vds, err := g.loader.ValueDescriptorsByName(g.names)
 	if err != nil {
-		return nil, err
+		return nil, contract.NewCommonEdgexError([]string{"getValueDescriptorsByNames.Execute", "loader.ValueDescriptorsByName"}, contract.KindDatabaseError, err.Error())
 	}
 
 	if len(vds) > g.config.MaxResultCount {
-		return nil, errors.NewErrLimitExceeded(len(vds))
+		return nil, contract.NewCommonEdgexError([]string{"getValueDescriptorsByNames.Execute"}, contract.KindLimitExceeded, errors.NewErrLimitExceeded(len(vds)).Error())
 	}
 
 	return vds, nil
@@ -69,14 +69,14 @@ type getAllValueDescriptors struct {
 }
 
 // Execute retrieves value descriptors by the provided names.
-func (g getAllValueDescriptors) Execute() ([]contract.ValueDescriptor, error) {
+func (g getAllValueDescriptors) Execute() ([]contract.ValueDescriptor, contract.EdgexError) {
 	vds, err := g.loader.ValueDescriptors()
 	if err != nil {
-		return nil, err
+		return nil, contract.NewCommonEdgexError([]string{"getAllValueDescriptors.Execute", "loader.ValueDescriptors"}, contract.KindDatabaseError, err.Error())
 	}
 
 	if len(vds) > g.config.MaxResultCount {
-		return nil, errors.NewErrLimitExceeded(len(vds))
+		return nil, contract.NewCommonEdgexError([]string{"getAllValueDescriptors.Execute"}, contract.KindLimitExceeded, errors.NewErrLimitExceeded(len(vds)).Error())
 	}
 
 	return vds, nil

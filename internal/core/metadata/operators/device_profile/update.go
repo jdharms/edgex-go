@@ -13,7 +13,7 @@ import (
 // Returns ErrDeviceProfileInvalidState if the device profile has one or more devices or provision watchers
 // associated with it
 type UpdateDeviceProfileExecutor interface {
-	Execute() (contract.DeviceProfile, error)
+	Execute() (contract.DeviceProfile, contract.EdgexError)
 }
 
 // updateDeviceProfile updates device profiles by way of the operator pattern.
@@ -23,7 +23,7 @@ type updateDeviceProfile struct {
 }
 
 // Execute updates and persists the device profile.
-func (n updateDeviceProfile) Execute() (contract.DeviceProfile, error) {
+func (n updateDeviceProfile) Execute() (contract.DeviceProfile, contract.EdgexError) {
 	// Check if the Device Profile exists
 	var existingDeviceProfile contract.DeviceProfile
 	// First try with ID
@@ -32,32 +32,56 @@ func (n updateDeviceProfile) Execute() (contract.DeviceProfile, error) {
 		// Try with name
 		existingDeviceProfile, err = n.database.GetDeviceProfileByName(n.dp.Name)
 		if err != nil {
-			return contract.DeviceProfile{}, errors.NewErrDeviceProfileNotFound(n.dp.Id, n.dp.Name)
+			return contract.DeviceProfile{}, contract.NewCommonEdgexError(
+				[]string{"updateDeviceProfile.Execute", "database.GetDeviceProfileByName"},
+				contract.KindEntityDoesNotExistError,
+				errors.NewErrDeviceProfileNotFound(n.dp.Id, n.dp.Name).Error(),
+			)
 		}
 	}
 
 	d, err := n.database.GetDevicesByProfileId(existingDeviceProfile.Id)
 	if err != nil {
-		return contract.DeviceProfile{}, err
+		return contract.DeviceProfile{}, contract.NewCommonEdgexError(
+			[]string{"updateDeviceProfile.Execute", "database.GetDevicesByProfileId"},
+			contract.KindDatabaseError,
+			err.Error(),
+		)
 	}
 
 	if len(d) > 0 {
-		return contract.DeviceProfile{}, errors.NewErrDeviceProfileInvalidState(n.dp.Id, n.dp.Name, strconv.Itoa(len(d))+" devices are associated with the device profile")
+		return contract.DeviceProfile{}, contract.NewCommonEdgexError(
+			[]string{"updateDeviceProfile.Execute"},
+			contract.KindEntityStateError,
+			errors.NewErrDeviceProfileInvalidState(n.dp.Id, n.dp.Name, strconv.Itoa(len(d))+" devices are associated with the device profile").Error(),
+		)
 	}
 
 	p, err := n.database.GetProvisionWatchersByProfileId(existingDeviceProfile.Id)
 	if err != nil {
-		return contract.DeviceProfile{}, err
+		return contract.DeviceProfile{}, contract.NewCommonEdgexError(
+			[]string{"updateDeviceProfile.Execute", "database.GetDevicesByProfileId"},
+			contract.KindDatabaseError,
+			err.Error(),
+		)
 	}
 
 	if len(p) > 0 {
 
-		return contract.DeviceProfile{}, errors.NewErrDeviceProfileInvalidState(n.dp.Id, n.dp.Name, strconv.Itoa(len(p))+" provision watchers are associated with the device profile")
+		return contract.DeviceProfile{}, contract.NewCommonEdgexError(
+			[]string{"updateDeviceProfile.Execute"},
+			contract.KindEntityStateError,
+			errors.NewErrDeviceProfileInvalidState(n.dp.Id, n.dp.Name, strconv.Itoa(len(p))+" provision watchers are associated with the device profile").Error(),
+		)
 	}
 
 	n.dp.Id = existingDeviceProfile.Id
 	if err := n.database.UpdateDeviceProfile(n.dp); err != nil {
-		return contract.DeviceProfile{}, err
+		return contract.DeviceProfile{}, contract.NewCommonEdgexError(
+			[]string{"updateDeviceProfile.Execute", "database.UpdateDeviceProfile"},
+			contract.KindDatabaseError,
+			err.Error(),
+		)
 	}
 
 	return n.dp, nil

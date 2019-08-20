@@ -1,6 +1,6 @@
 [Writable]
 LogLevel = 'INFO'
-EnableValueDescriptorManagement = false
+EnableValueDescriptorManagement = true
 
 [Service]
 BootTimeout = 30000

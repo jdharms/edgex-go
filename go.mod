@@ -29,3 +29,5 @@ require (
 	gopkg.in/eapache/queue.v1 v1.1.0
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+replace github.com/edgexfoundry/go-mod-core-contracts => github.com/AnthonyMBonafide/go-mod-core-contracts v0.0.0-20190822161155-323500efd366

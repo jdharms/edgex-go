@@ -24,6 +24,7 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/clients"
 	"github.com/edgexfoundry/go-mod-core-contracts/clients/types"
 	contract "github.com/edgexfoundry/go-mod-core-contracts/models"
+	http2 "github.com/edgexfoundry/go-mod-core-contracts/models/http"
 	"github.com/gorilla/mux"
 
 	"github.com/edgexfoundry/edgex-go/internal/core/data/errors"
@@ -1300,6 +1301,7 @@ func valueDescriptorByNameHandler(w http.ResponseWriter, r *http.Request) {
 			case *types.ErrServiceClient:
 				http.Error(w, err.Error(), err.StatusCode)
 			default:
+				// TODO(Anthony) Fix this error handling. When we cannot find the entity we are returning a 500
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 			LoggingClient.Error(err.Error())
@@ -1515,15 +1517,10 @@ func restValueDescriptorsUsageHandler(w http.ResponseWriter, r *http.Request) {
 		op = value_descriptor.NewGetValueDescriptorsNameExecutor(strings.Split(namesFilter[0], ","), dbClient, LoggingClient, Configuration.Service)
 	}
 
-	vds, err = op.Execute()
-	if err != nil {
-		switch err.(type) {
-		case *errors.ErrLimitExceeded:
-			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
-		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
+	vds, edgexError := op.Execute()
+	if edgexError != nil {
+		LoggingClient.Error(edgexError.String())
+		_ = http2.ToHttpResponse(edgexError, w, http2.JsonDecoder)
 		return
 	}
 
@@ -1533,9 +1530,9 @@ func restValueDescriptorsUsageHandler(w http.ResponseWriter, r *http.Request) {
 	var ops reading.GetReadingsExecutor
 	for _, vd := range vds {
 		ops = reading.NewGetReadingsNameExecutor(vd.Name, ValueDescriptorUsageReadLimit, dbClient, LoggingClient, Configuration.Service)
-		r, err := ops.Execute()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		r, edgexError := ops.Execute()
+		if edgexError != nil {
+			_ = http2.ToHttpResponse(edgexError, w, http2.JsonDecoder)
 			return
 		}
 
