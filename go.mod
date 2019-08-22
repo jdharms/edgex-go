@@ -30,4 +30,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 )
 
-replace github.com/edgexfoundry/go-mod-core-contracts => github.com/AnthonyMBonafide/go-mod-core-contracts v0.0.0-20190822161155-323500efd366
+replace github.com/edgexfoundry/go-mod-core-contracts => ../go-mod-core-contracts

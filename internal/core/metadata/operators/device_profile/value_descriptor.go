@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/clients/logger"
-	"github.com/edgexfoundry/go-mod-core-contracts/clients/types"
-	contract "github.com/edgexfoundry/go-mod-core-contracts/models"
-	"github.com/edgexfoundry/go-mod-core-contracts/models/http"
-
 	"github.com/edgexfoundry/edgex-go/internal/core/data/errors"
+	"github.com/edgexfoundry/go-mod-core-contracts/clients/logger"
+	contract "github.com/edgexfoundry/go-mod-core-contracts/models"
 )
 
 // ValueDescriptorAdder provides the necessary functionality for creating a ValueDescriptor.
@@ -75,28 +72,29 @@ type updateValueDescriptor struct {
 
 // UpdateValueDescriptorExecutor updates a value descriptor.
 type UpdateValueDescriptorExecutor interface {
-	Execute() contract.EdgexError
+	Execute() error
 }
 
 // Execute updates a value descriptor with the provided information.
-func (u updateValueDescriptor) Execute() contract.EdgexError {
+func (u updateValueDescriptor) Execute() error {
+	const op = "updateValueDescriptor.Execute"
 	// Get pre-existing device profile so we can determine what to do with the device resources provided in the update.
 	// For example, update/create/delete.
 	persistedDeviceProfile, err := u.loader.GetDeviceProfileByName(u.dp.Name)
 	if err != nil {
 		return contract.NewCommonEdgexError(
-			[]string{"updateValueDescriptor.Execute", "loader.GetDeviceProfileByName"},
+			op,
 			contract.KindDatabaseError,
-			err.Error(),
+			err,
 		)
 	}
 
 	devices, err := u.loader.GetDevicesByProfileId(persistedDeviceProfile.Id)
 	if err != nil {
 		return contract.NewCommonEdgexError(
-			[]string{"updateValueDescriptor.Execute", "loader.GetDevicesByProfileId"},
+			op,
 			contract.KindDatabaseError,
-			err.Error(),
+			err,
 		)
 	}
 
@@ -109,9 +107,9 @@ func (u updateValueDescriptor) Execute() contract.EdgexError {
 		}
 
 		return contract.NewCommonEdgexError(
-			[]string{"updateValueDescriptor.Execute"},
+			op,
 			contract.KindEntityStateError,
-			fmt.Sprintf("The DeviceProfile is in use by Device(s):[%s]", strings.Join(associatedDeviceNames, ",")),
+			fmt.Errorf("The DeviceProfile is in use by Device(s):[%s]", strings.Join(associatedDeviceNames, ",")),
 		)
 	}
 
@@ -124,18 +122,6 @@ func (u updateValueDescriptor) Execute() contract.EdgexError {
 	// Check if any of the ValueDescriptors associated with the DeviceResources are in use.
 	// If so return an error stating all the ValueDescriptors which are in use.
 	valueDescriptorUsage, err := u.client.ValueDescriptorsUsage(persistedDeviceResourceNames, u.ctx)
-
-	// TODO(Anthony) this is here only to simulate how the system would behave if our clients returned EdgeX errors in the body of the response.
-	//  This would allow us to programmatically inspect and operate on errors.
-	var edgexError contract.EdgexError
-	if err != nil{
-		edgexError = http.FromServiceClientError(err.(*types.ErrServiceClient))
-	}
-
-	if edgexError != nil {
-		edgexError.AddOps("updateValueDescriptor.Execute","client.ValueDescriptorsUsage")
-		return edgexError
-	}
 
 	var inUseValueDescriptors []string
 	for name, inUse := range valueDescriptorUsage {

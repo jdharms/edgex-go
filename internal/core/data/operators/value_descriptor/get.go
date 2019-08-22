@@ -17,6 +17,7 @@
 package value_descriptor
 
 import (
+	"fmt"
 	"github.com/edgexfoundry/go-mod-core-contracts/clients/logger"
 	contract "github.com/edgexfoundry/go-mod-core-contracts/models"
 
@@ -26,7 +27,7 @@ import (
 
 // GetValueDescriptorsExecutor retrieves one or more value descriptors.
 type GetValueDescriptorsExecutor interface {
-	Execute() ([]contract.ValueDescriptor, contract.EdgexError)
+	Execute() ([]contract.ValueDescriptor, error)
 }
 
 // getValueDescriptorsByNames encapsulates data needed to retrieve value descriptors by one or more names.
@@ -38,14 +39,15 @@ type getValueDescriptorsByNames struct {
 }
 
 // Execute retrieves value descriptors by one or more names.
-func (g getValueDescriptorsByNames) Execute() ([]contract.ValueDescriptor, contract.EdgexError) {
+func (g getValueDescriptorsByNames) Execute() ([]contract.ValueDescriptor, error) {
+	const op = "getValueDescriptorsByNames.Execute"
 	vds, err := g.loader.ValueDescriptorsByName(g.names)
 	if err != nil {
-		return nil, contract.NewCommonEdgexError([]string{"getValueDescriptorsByNames.Execute", "loader.ValueDescriptorsByName"}, contract.KindDatabaseError, err.Error())
+		return nil, contract.NewCommonEdgexError(op, contract.KindDatabaseError, err)
 	}
 
 	if len(vds) > g.config.MaxResultCount {
-		return nil, contract.NewCommonEdgexError([]string{"getValueDescriptorsByNames.Execute"}, contract.KindLimitExceeded, errors.NewErrLimitExceeded(len(vds)).Error())
+		return nil, contract.NewCommonEdgexError(op, contract.KindLimitExceeded, fmt.Errorf("result count %v exceeds max result count of: %v", len(vds), g.config.MaxResultCount))
 	}
 
 	return vds, nil
@@ -69,7 +71,7 @@ type getAllValueDescriptors struct {
 }
 
 // Execute retrieves value descriptors by the provided names.
-func (g getAllValueDescriptors) Execute() ([]contract.ValueDescriptor, contract.EdgexError) {
+func (g getAllValueDescriptors) Execute() ([]contract.ValueDescriptor, error) {
 	vds, err := g.loader.ValueDescriptors()
 	if err != nil {
 		return nil, contract.NewCommonEdgexError([]string{"getAllValueDescriptors.Execute", "loader.ValueDescriptors"}, contract.KindDatabaseError, err.Error())

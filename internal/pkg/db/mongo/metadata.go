@@ -308,9 +308,10 @@ func (mc MongoClient) GetDeviceProfilesByManufacturer(man string) ([]contract.De
 }
 
 func (mc MongoClient) GetDeviceProfileByName(n string) (contract.DeviceProfile, error) {
+	const op = "db.mongo.metadata.GetDeviceProfileByName"
 	model, err := mc.getDeviceProfile(bson.M{"name": n})
 	if err != nil {
-		return contract.DeviceProfile{}, err
+		return contract.DeviceProfile{}, contract.NewCommonEdgexError(err, op)
 	}
 	return model.ToContract()
 }

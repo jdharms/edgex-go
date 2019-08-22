@@ -17,16 +17,16 @@
 package reading
 
 import (
+	"fmt"
 	"github.com/edgexfoundry/go-mod-core-contracts/clients/logger"
 	contract "github.com/edgexfoundry/go-mod-core-contracts/models"
 
-	"github.com/edgexfoundry/edgex-go/internal/core/data/errors"
 	"github.com/edgexfoundry/edgex-go/internal/pkg/config"
 )
 
 // GetReadingsExecutor retrieves one or more readings.
 type GetReadingsExecutor interface {
-	Execute() ([]contract.Reading, contract.EdgexError)
+	Execute() ([]contract.Reading, error)
 }
 
 // getReadingsByValueDescriptorName encapsulates the data needed to obtain readings by a value descriptor name.
@@ -39,15 +39,16 @@ type getReadingsByValueDescriptorName struct {
 }
 
 // Execute retrieves readings by value descriptor name.
-func (g getReadingsByValueDescriptorName) Execute() ([]contract.Reading, contract.EdgexError) {
+func (g getReadingsByValueDescriptorName) Execute() ([]contract.Reading, error) {
+	const op = "getReadingsByValueDescriptorName.Execute"
 	r, err := g.loader.ReadingsByValueDescriptor(g.name, g.limit)
 
 	if err != nil {
-		return nil, contract.NewCommonEdgexError([]string{"getReadingsByValueDescriptorName.Execute", "loader.ReadingsByValueDescriptor"}, contract.KindDatabaseError, err.Error())
+		return nil, contract.NewCommonEdgexError(op, contract.KindDatabaseError, err)
 	}
 
 	if len(r) > g.config.MaxResultCount {
-		return nil, contract.NewCommonEdgexError([]string{"getReadingsByValueDescriptorName.Execute"}, contract.KindLimitExceeded, errors.NewErrLimitExceeded(len(r)).Error())
+		return nil, contract.NewCommonEdgexError(op, contract.KindLimitExceeded, fmt.Errorf("result count %v exceeds max result count of: %v", len(r), g.config.MaxResultCount))
 	}
 
 	return r, nil

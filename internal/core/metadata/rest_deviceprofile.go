@@ -104,8 +104,8 @@ func restUpdateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		vdOp := device_profile.NewUpdateValueDescriptorExecutor(from, dbClient, vdc, LoggingClient, r.Context())
 		edgexError := vdOp.Execute()
 		if edgexError != nil {
-			LoggingClient.Error(edgexError.String())
-			_ = http2.ToHttpResponse(edgexError, w, http2.JsonDecoder)
+			LoggingClient.Error(edgexError.Error())
+			http2.ToHttpResponse(edgexError, w)
 			return
 		}
 	}
@@ -113,8 +113,8 @@ func restUpdateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 	op := device_profile.NewUpdateDeviceProfileExecutor(dbClient, from)
 	dp, edgexError := op.Execute()
 	if edgexError != nil {
-		LoggingClient.Error(edgexError.String())
-		_ = http2.ToHttpResponse(edgexError, w, http2.JsonDecoder)
+		LoggingClient.Error(edgexError.Error())
+		http2.ToHttpResponse(edgexError, w)
 		return
 	}
 

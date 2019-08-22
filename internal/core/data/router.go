@@ -1519,8 +1519,8 @@ func restValueDescriptorsUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 	vds, edgexError := op.Execute()
 	if edgexError != nil {
-		LoggingClient.Error(edgexError.String())
-		_ = http2.ToHttpResponse(edgexError, w, http2.JsonDecoder)
+		LoggingClient.Error(edgexError.Error())
+		http2.ToHttpResponse(edgexError, w)
 		return
 	}
 
@@ -1532,7 +1532,7 @@ func restValueDescriptorsUsageHandler(w http.ResponseWriter, r *http.Request) {
 		ops = reading.NewGetReadingsNameExecutor(vd.Name, ValueDescriptorUsageReadLimit, dbClient, LoggingClient, Configuration.Service)
 		r, edgexError := ops.Execute()
 		if edgexError != nil {
-			_ = http2.ToHttpResponse(edgexError, w, http2.JsonDecoder)
+			http2.ToHttpResponse(edgexError, w)
 			return
 		}
 
