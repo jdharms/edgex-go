@@ -23,14 +23,14 @@ EnableRemote = false
 File = './logs/security-secretstore-setup.log'
 
 [SecretService]
-scheme = "https"
-server = "edgex-vault"
+scheme = "http"
+server = "localhost"
 port = 8200
 certpath = "v1/secret/edgex/pki/tls/edgex-kong"
-cafilepath = "/vault/config/pki/EdgeXFoundryCA/EdgeXFoundryCA.pem"
-certfilepath = "/vault/config/pki/EdgeXFoundryCA/edgex-kong.pem"
-keyfilepath = "/vault/config/pki/EdgeXFoundryCA/edgex-kong.priv.key"
-tokenfolderpath = "/vault/config/assets"
+cafilepath = "/Users/jdharms/workspace/edgex-go/cmd/security-secretstore-setup/EdgeXFoundryCA.pem"
+certfilepath = "/Users/jdharms/workspace/edgex-go/cmd/security-secretstore-setup/edgex-kong.pem"
+keyfilepath = "/Users/jdharms/workspace/edgex-go/cmd/security-secretstore-setup/edgex-kong.priv.key"
+tokenfolderpath = "/Users/jdharms/workspace/edgex-go/cmd/security-secretstore-setup"
 tokenfile = "resp-init.json"
 vaultsecretshares = 5
 vaultsecretthreshold = 3
